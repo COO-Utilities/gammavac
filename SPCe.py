@@ -63,9 +63,12 @@ class SpceController:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.settimeout(2.0)
             self.sock.connect((self.host, self.port))
+            self.connected = True
+            print("Connected to SPCe controller at %s:%d" % (self.host, self.port))
 
     def _send_command(self, command: str) -> int:
         """Send a command without expecting a response."""
+        print("Sending command %s" % command)
         if self.simulate:
             print(f"[SIM SEND] {command}")
             return 0
@@ -76,6 +79,7 @@ class SpceController:
 
     def _send_request(self, command: str) -> str:
         """Send a command and receive a response."""
+        print("Sending request %s" % command)
         if self.simulate:
             print(f"[SIM REQ] {command}")
             return "SIM_RESPONSE"

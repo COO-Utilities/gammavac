@@ -90,11 +90,30 @@ class SpceController:
             return response
 
     def create_command(self, code, data=None):
-        """Create a properly formatted command string."""
+        """Create a properly formatted command string.
+
+        This function creates a command string to be passed to
+        the SPCe vacuum controller. See SPCe vacuum SPCe controller user manual
+        from gammavacuum.com for details.
+
+        Commands use this format:
+        {attention char} {bus_address} {command code} {data} {termination}
+              ~              ba              cc         data       \r
+
+        With
+        ba   = address value between 01 and FF.
+        cc   = character string representing command (2 bytes)
+        data = optional value for command (e.g. baud rate, adress setting, etc.)
+        """
+
         command = f"~{SPCE_BUS_ADDRESS:02X} {code:02X}"
         if data:
             command += f" {data}"
-        command += " \r"
+        chksm = 0
+        for char in command:
+            chksm += int(char)
+        chksm = chksm % 256
+        command += f" {chksm:02X} \r"
         return command
 
     def extract_float_from_response(self, response):

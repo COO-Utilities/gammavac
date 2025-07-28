@@ -1804,7 +1804,7 @@ int spce_create_command_string(
 	sprintf(temp_code, "%.2X", command_code);
 
 	/* determine which command was called, and then construct
-	command based on paramaters if err == 0 */
+	command based on parameters if err == 0 */
 	if (err == 0) {
 		switch (command_code) {
 			/* just the command code */

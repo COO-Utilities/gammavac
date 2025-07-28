@@ -66,7 +66,20 @@ class SpceController:
             self.sock.settimeout(2.0)
             self.sock.connect((self.host, self.port))
             self.connected = True
-            print("Connected to SPCe controller at %s:%d" % (self.host, self.port))
+            self._clear_socket()
+            print(f"Connected to SPCe controller at {self.host}:{self.port:d} "
+                  f"bus {self.bus_address:d}")
+
+    def _clear_socket(self):
+        """ Clear socket buffer. """
+        if self.sock is not None:
+            self.sock.setblocking(False)
+            while True:
+                try:
+                    _ = self.sock.recv(1024)
+                except BlockingIOError:
+                    break
+            self.sock.setblocking(True)
 
     def _send_command(self, command: str) -> int:
         """Send a command without expecting a response."""

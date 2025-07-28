@@ -63,7 +63,6 @@ class SpceController:
 
         if not self.simulate:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.settimeout(2.0)
             self.sock.connect((self.host, self.port))
             self.connected = True
             self._clear_socket()
@@ -80,6 +79,7 @@ class SpceController:
                 except BlockingIOError:
                     break
             self.sock.setblocking(True)
+            self.sock.settimeout(2.0)
 
     def _send_command(self, command: str) -> int:
         """Send a command without expecting a response."""

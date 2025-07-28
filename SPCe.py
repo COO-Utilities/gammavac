@@ -75,7 +75,7 @@ class SpceController:
             print(f"[SIM SEND] {command}")
             return 0
         with self.lock:
-            self.sock.sendall(command.encode('ascii'))
+            self.sock.sendall(command.encode('utf-8'))
             time.sleep(SPCE_TIME_BETWEEN_COMMANDS)
         return 0
 
@@ -86,10 +86,12 @@ class SpceController:
             print(f"[SIM REQ] {command}")
             return "SIM_RESPONSE"
         with self.lock:
-            self.sock.sendall(command.encode('ascii'))
+            self.sock.sendall(command.encode('utf-8'))
             time.sleep(SPCE_TIME_BETWEEN_COMMANDS)
-            response = self.sock.recv(1024).decode('ascii').strip()
-            return response
+            recv = self.sock.recv(1024)
+            recv_len = len(recv)
+            print("Return: len = %d, Value = %s" % (recv_len, recv))
+            return str(recv.decode('utf-8')).strip()
 
     def create_command(self, code, data=None):
         """Create a properly formatted command string.

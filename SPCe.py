@@ -106,14 +106,14 @@ class SpceController:
         data = optional value for command (e.g. baud rate, adress setting, etc.)
         """
 
-        command = f"~{SPCE_BUS_ADDRESS:02X} {code:02X}"
+        command = f" {SPCE_BUS_ADDRESS:02X} {code:02X}"
         if data:
             command += f" {data}"
         chksm = 0
         for char in command:
-            chksm += int(char)
+            chksm += ord(char)
         chksm = chksm % 256
-        command += f" {chksm:02X} \r"
+        command = f"~ {command} {chksm:02X} \r"
         return command
 
     def extract_float_from_response(self, response):

@@ -44,7 +44,7 @@ class SpceController:
     """Class to control a Lesker GAMMA gauge SPCe controller over a TCP socket."""
     # pylint: disable=too-many-public-methods
 
-    def __init__(self, host: str, port: int, bus_address: str ='01',
+    def __init__(self, host: str, port: int, bus_address: int =1,
                  simulate: bool =False) -> None:
         """Initialize the SpceController.
 

@@ -113,7 +113,7 @@ class SpceController:
         for char in command:
             chksm += ord(char)
         chksm = chksm % 256
-        command = f"~ {command} {chksm:02X} \r"
+        command = f"~{command} {chksm:02X} \r"
         return command
 
     def extract_float_from_response(self, response):

@@ -5,7 +5,6 @@ import socket
 import re
 
 # Constants (partial, extend as needed)
-SPCE_BUS_ADDRESS = 1
 SPCE_TIME_BETWEEN_COMMANDS = 0.12
 
 # Command codes (extend as needed)
@@ -45,16 +44,19 @@ class SpceController:
     """Class to control a Lesker GAMMA gauge SPCe controller over a TCP socket."""
     # pylint: disable=too-many-public-methods
 
-    def __init__(self, host: str, port: int, simulate: bool =False) -> None:
+    def __init__(self, host: str, port: int, bus_address: str ='01',
+                 simulate: bool =False) -> None:
         """Initialize the SpceController.
 
         Args:
             host (str): IP address of the controller.
             port (int): TCP port number.
+            bus_address (str): bus address of the controller (00 - FF).
             simulate (bool): If True, simulate communication.
         """
         self.host = host
         self.port = port
+        self.bus_address = bus_address
         self.simulate = simulate
         self.lock = threading.Lock()
         self.sock = None
@@ -106,14 +108,14 @@ class SpceController:
         data = optional value for command (e.g. baud rate, adress setting, etc.)
         """
 
-        command = f" {SPCE_BUS_ADDRESS:02X} {code:02X}"
+        command = f" {self.bus_address:02X} {code:02X} "
         if data:
-            command += f" {data}"
+            command += f"{data} "
         chksm = 0
         for char in command:
             chksm += ord(char)
         chksm = chksm % 256
-        command = f"~{command} {chksm:02X} \r"
+        command = f"~{command}{chksm:02X}\r"
         return command
 
     def extract_float_from_response(self, response):

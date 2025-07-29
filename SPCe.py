@@ -3,6 +3,9 @@ import time
 import threading
 import socket
 import re
+import sys
+
+import logging
 
 # Constants (partial, extend as needed)
 SPCE_TIME_BETWEEN_COMMANDS = 0.12
@@ -45,7 +48,7 @@ class SpceController:
     # pylint: disable=too-many-public-methods
 
     def __init__(self, host: str, port: int, bus_address: int =1,
-                 simulate: bool =False) -> None:
+                 simulate: bool =False, log: bool =True) -> None:
         """Initialize the SpceController.
 
         Args:
@@ -53,6 +56,7 @@ class SpceController:
             port (int): TCP port number.
             bus_address (str): bus address of the controller (00 - FF).
             simulate (bool): If True, simulate communication.
+            logging (bool): If True, log outputs.
         """
         self.host = host
         self.port = port
@@ -60,14 +64,42 @@ class SpceController:
         self.simulate = simulate
         self.lock = threading.Lock()
         self.sock = None
+        self.verbose = False
+
+        if log:
+            logfile = __name__.rsplit('.', 1)[-1] + '.log'
+            self.logger = logging.getLogger(logfile)
+            self.logger.setLevel(logging.INFO)
+            formatter = logging.Formatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            )
+            file_handler = logging.FileHandler(logfile)
+            file_handler.setFormatter(formatter)
+            self.logger.addHandler(file_handler)
+
+            console_formatter = logging.Formatter(
+                '%(asctime)s--%(message)s')
+            console_handler = logging.StreamHandler(sys.stdout)
+            console_handler.setFormatter(console_formatter)
+            self.logger.addHandler(console_handler)
 
         if not self.simulate:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.connect((self.host, self.port))
             self.connected = True
             self._clear_socket()
-            print(f"Connected to SPCe controller at {self.host}:{self.port:d} "
-                  f"bus {self.bus_address:d}")
+            if self.logger:
+                self.logger.info("Connected to SPCe controller at %s:%d bus %d",
+                                 self.host, self.port, self.bus_address)
+
+    def set_verbose(self, verbose: bool) -> None:
+        """Set verbose mode."""
+        self.verbose = verbose
+        if self.logger:
+            if self.verbose:
+                self.logger.setLevel(logging.DEBUG)
+            else:
+                self.logger.setLevel(logging.INFO)
 
     def _clear_socket(self):
         """ Clear socket buffer. """
@@ -83,7 +115,8 @@ class SpceController:
 
     def _send_command(self, command: str) -> int:
         """Send a command without expecting a response."""
-        print("Sending command %s" % command)
+        if self.logger:
+            self.logger.debug("Sending command %s", command)
         if self.simulate:
             print(f"[SIM SEND] {command}")
             return 0
@@ -94,7 +127,8 @@ class SpceController:
 
     def _send_request(self, command: str) -> str:
         """Send a command and receive a response."""
-        print("Sending request %s" % command)
+        if self.logger:
+            self.logger.debug("Sending request %s", command)
         if self.simulate:
             print(f"[SIM REQ] {command}")
             return "SIM_RESPONSE"
@@ -103,7 +137,9 @@ class SpceController:
             time.sleep(SPCE_TIME_BETWEEN_COMMANDS)
             recv = self.sock.recv(1024)
             recv_len = len(recv)
-            print("Return: len = %d, Value = %s" % (recv_len, recv))
+            if self.logger:
+                self.logger.debug("Return: len = %d, Value = %s",
+                                  recv_len, recv)
             return str(recv.decode('utf-8')).strip()
 
     def create_command(self, code, data=None):

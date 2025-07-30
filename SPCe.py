@@ -7,6 +7,7 @@ import re
 import sys
 
 import logging
+from typing import Union
 
 # Constants (partial, extend as needed)
 SPCE_TIME_BETWEEN_COMMANDS = 0.12
@@ -194,7 +195,7 @@ class SpceController:
             time.sleep(SPCE_TIME_BETWEEN_COMMANDS)
         return 0
 
-    def _send_request(self, command: str) -> str:
+    def _send_request(self, command: str, response_type: str ="S") -> Union[int, float, str]:
         """Send a command and receive a response."""
         if not self.connected:
             if self.logger:
@@ -221,7 +222,14 @@ class SpceController:
                 if self.logger:
                     self.logger.error("Timeout while waiting for response")
                 return "TIMEOUT"
-            return str(recv.decode('utf-8')).strip()
+            retval = str(recv.decode('utf-8')).strip()
+            if self.validate_response(retval):
+                if response_type == "F":
+                    retval = extract_float_from_response(retval)
+                if response_type == "I":
+                    retval = extract_int_from_response(retval)
+                return retval
+            return "NOT VALID"
 
     def create_command(self, code, data=None):
         """Create a properly formatted command string.
@@ -243,12 +251,77 @@ class SpceController:
         command = f" {self.bus_address:02X} {code:02X} "
         if data:
             command += f"{data} "
-        chksm = 0
-        for char in command:
-            chksm += ord(char)
-        chksm = chksm % 256
+
+        chksm = sum(ord(c) for c in command) % 256
+
         command = f"~{command}{chksm:02X}\r"
         return command
+
+    def validate_response(self, response: str) -> int:
+        """
+        Validate the response string from a serial device.
+
+        Args:
+            response (str): The raw response string from the device.
+
+        Returns:
+            int: 0 if valid, or an error code.
+        """
+        # pylint: disable=too-many-branches
+
+        try:
+            # The First field must be the bus address
+            bus = int(response.split()[0])
+        except (ValueError, IndexError):
+            if self.logger:
+                self.logger.error("Invalid response from device.")
+            else:
+                print("Invalid response from device.")
+            return False
+
+        if bus != self.bus_address:
+            if self.logger:
+                self.logger.error("Invalid bus address from device.")
+            else:
+                print("Invalid bus address from device.")
+            return False
+
+        # Now check for error condition or valid response
+        substr = response[3:]
+
+        if substr.startswith("ER"):
+            try:
+                error_code_str = substr[3:]
+                if self.logger:
+                    self.logger.error(error_code_str)
+                else:
+                    print(error_code_str)
+            except ValueError:
+                pass
+            return False
+
+        # Calculate and verify checksum
+        offset = len(response) - 3
+        try:
+            rcksm = int(response[offset:], 16)  # Read hex checksum
+        except ValueError:
+            if self.logger:
+                self.logger.error("Unable to read checksum from device.")
+            else:
+                print("Unable to read checksum from device.")
+            return False
+
+        # Calculate checksum (sum of all chars before checksum, mod 256)
+        cksm = sum(ord(c) for c in response[:offset]) % 256
+
+        if rcksm != cksm:
+            if self.logger:
+                self.logger.error("Invalid checksum from device.")
+            else:
+                print("Invalid checksum from device.")
+            return False
+
+        return True
 
     # --- Command Methods ---
 
@@ -271,18 +344,18 @@ class SpceController:
 
     def read_current(self):
         """Read the emission current."""
-        ret = self._send_request(self.create_command(SPCE_COMMAND_READ_CURRENT))
-        return extract_float_from_response(ret)
+        return self._send_request(
+            self.create_command(SPCE_COMMAND_READ_CURRENT), "F")
 
     def read_pressure(self):
         """Read the pressure value."""
-        ret = self._send_request(self.create_command(SPCE_COMMAND_READ_PRESSURE))
-        return extract_float_from_response(ret)
+        return self._send_request(
+            self.create_command(SPCE_COMMAND_READ_PRESSURE), "F")
 
     def read_voltage(self):
         """Read the ion gauge voltage."""
-        ret = self._send_request(self.create_command(SPCE_COMMAND_READ_VOLTAGE))
-        return extract_float_from_response(ret)
+        return self._send_request(
+            self.create_command(SPCE_COMMAND_READ_VOLTAGE), "F")
 
     def set_units(self, unit_char):
         """Set the pressure display units.
@@ -297,8 +370,8 @@ class SpceController:
 
     def get_pump_size(self):
         """Get the configured pump size."""
-        ret = self._send_request(self.create_command(SPCE_COMMAND_GET_PUMP_SIZE))
-        return extract_int_from_response(ret)
+        return self._send_request(
+            self.create_command(SPCE_COMMAND_GET_PUMP_SIZE), "I")
 
     def set_pump_size(self, size):
         """Set the pump size.
@@ -312,8 +385,8 @@ class SpceController:
 
     def get_cal_factor(self):
         """Get the calibration factor."""
-        ret = self._send_request(self.create_command(SPCE_COMMAND_GET_CAL_FACTOR))
-        return extract_float_from_response(ret)
+        return self._send_request(
+            self.create_command(SPCE_COMMAND_GET_CAL_FACTOR), "F")
 
     def set_cal_factor(self, factor):
         """Set the calibration factor.
@@ -326,7 +399,7 @@ class SpceController:
         return self._send_request(self.create_command(
             SPCE_COMMAND_SET_CAL_FACTOR, f"{factor:.2f}"))
 
-    def set_auto_restart(self, enable):
+    def set_auto_restart(self, enable: bool):
         """Enable or disable auto restart."""
         val = "YES" if enable else "NO"
         return self._send_request(self.create_command(SPCE_COMMAND_SET_AUTO_RESTART, val))
@@ -350,8 +423,8 @@ class SpceController:
 
     def get_analog_mode(self):
         """Get the analog output mode."""
-        ret = self._send_request(self.create_command(SPCE_COMMAND_GET_ANALOG_MODE))
-        return extract_int_from_response(ret)
+        return self._send_request(
+            self.create_command(SPCE_COMMAND_GET_ANALOG_MODE), "I")
 
     def set_analog_mode(self, mode: int):
         """Set the analog output mode.
@@ -379,8 +452,8 @@ class SpceController:
 
     def get_hv_autorecovery(self):
         """Get the HV autorecovery setting."""
-        ret = self._send_request(self.create_command(SPCE_COMMAND_GET_HV_AUTORECOVERY))
-        return extract_int_from_response(ret)
+        return self._send_request(
+            self.create_command(SPCE_COMMAND_GET_HV_AUTORECOVERY), "I")
 
     def set_comm_mode(self, mode):
         """Set the communication mode.
@@ -394,8 +467,8 @@ class SpceController:
 
     def get_comm_mode(self):
         """Get the communication mode."""
-        ret = self._send_request(self.create_command(SPCE_COMMAND_GET_COMM_MODE))
-        return extract_int_from_response(ret)
+        return self._send_request(
+            self.create_command(SPCE_COMMAND_GET_COMM_MODE), "I")
 
     def set_comm_interface(self, interface):
         """Set the communication interface.
@@ -410,6 +483,7 @@ class SpceController:
 
 def extract_float_from_response(response):
     """Extract a float value from the response string."""
+    response = response.split("OK 00 ")[-1].split()[0]
     try:
         match = re.search(r"([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)", response)
         return float(match.group(1)) if match else None
@@ -418,6 +492,7 @@ def extract_float_from_response(response):
 
 def extract_int_from_response(response):
     """Extract an integer value from the response string."""
+    response = response.split("OK 00 ")[-1].split()[0]
     try:
         match = re.search(r"([-+]?[0-9]+)", response)
         return int(match.group(1)) if match else None
@@ -426,6 +501,7 @@ def extract_int_from_response(response):
 
 def extract_string_from_response(response):
     """Extract a string value from a key=value response."""
+    response = response.split("OK 00 ")[-1].split()[0]
     try:
         parts = response.split(',')
         for part in parts:

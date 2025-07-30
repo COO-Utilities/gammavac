@@ -137,18 +137,22 @@ class SpceController:
 
     def disconnect(self) -> None:
         """Disconnect from the controller."""
-        try:
-            self.sock.shutdown(socket.SHUT_RDWR)
-            self.sock.close()
+        if self.simulate:
+            self.logger.info('Disconnected from SPCe simulator.')
             self.connected = False
-            self.sock = None
-            if self.logger:
-                self.logger.info("Disconnected from SPCe controller")
-        except OSError as e:
-            if self.logger:
-                self.logger.error("Disconnection error: %s", e.strerror)
-            self.connected = False
-            self.sock = None
+        else:
+            try:
+                self.sock.shutdown(socket.SHUT_RDWR)
+                self.sock.close()
+                self.connected = False
+                self.sock = None
+                if self.logger:
+                    self.logger.info("Disconnected from SPCe controller")
+            except OSError as e:
+                if self.logger:
+                    self.logger.error("Disconnection error: %s", e.strerror)
+                self.connected = False
+                self.sock = None
 
     def set_verbose(self, verbose: bool =True) -> None:
         """Set verbose mode."""

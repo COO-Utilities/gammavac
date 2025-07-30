@@ -250,33 +250,6 @@ class SpceController:
         command = f"~{command}{chksm:02X}\r"
         return command
 
-    def extract_float_from_response(self, response):
-        """Extract a float value from the response string."""
-        try:
-            match = re.search(r"([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)", response)
-            return float(match.group(1)) if match else None
-        except Exception:
-            return None
-
-    def extract_int_from_response(self, response):
-        """Extract an integer value from the response string."""
-        try:
-            match = re.search(r"([-+]?[0-9]+)", response)
-            return int(match.group(1)) if match else None
-        except Exception:
-            return None
-
-    def extract_string_from_response(self, response):
-        """Extract a string value from a key=value response."""
-        try:
-            parts = response.split(',')
-            for part in parts:
-                if '=' in part:
-                    return part.split('=')[1].strip()
-            return response.strip()
-        except Exception:
-            return response.strip()
-
     # --- Command Methods ---
 
     def read_version(self):
@@ -298,15 +271,18 @@ class SpceController:
 
     def read_current(self):
         """Read the emission current."""
-        return self._send_request(self.create_command(SPCE_COMMAND_READ_CURRENT))
+        ret = self._send_request(self.create_command(SPCE_COMMAND_READ_CURRENT))
+        return extract_float_from_response(ret)
 
     def read_pressure(self):
         """Read the pressure value."""
-        return self._send_request(self.create_command(SPCE_COMMAND_READ_PRESSURE))
+        ret = self._send_request(self.create_command(SPCE_COMMAND_READ_PRESSURE))
+        return extract_float_from_response(ret)
 
     def read_voltage(self):
         """Read the ion gauge voltage."""
-        return self._send_request(self.create_command(SPCE_COMMAND_READ_VOLTAGE))
+        ret = self._send_request(self.create_command(SPCE_COMMAND_READ_VOLTAGE))
+        return extract_float_from_response(ret)
 
     def set_units(self, unit_char):
         """Set the pressure display units.
@@ -321,7 +297,8 @@ class SpceController:
 
     def get_pump_size(self):
         """Get the configured pump size."""
-        return self._send_request(self.create_command(SPCE_COMMAND_GET_PUMP_SIZE))
+        ret = self._send_request(self.create_command(SPCE_COMMAND_GET_PUMP_SIZE))
+        return extract_int_from_response(ret)
 
     def set_pump_size(self, size):
         """Set the pump size.
@@ -335,7 +312,8 @@ class SpceController:
 
     def get_cal_factor(self):
         """Get the calibration factor."""
-        return self._send_request(self.create_command(SPCE_COMMAND_GET_CAL_FACTOR))
+        ret = self._send_request(self.create_command(SPCE_COMMAND_GET_CAL_FACTOR))
+        return extract_float_from_response(ret)
 
     def set_cal_factor(self, factor):
         """Set the calibration factor.
@@ -372,9 +350,10 @@ class SpceController:
 
     def get_analog_mode(self):
         """Get the analog output mode."""
-        return self._send_request(self.create_command(SPCE_COMMAND_GET_ANALOG_MODE))
+        ret = self._send_request(self.create_command(SPCE_COMMAND_GET_ANALOG_MODE))
+        return extract_int_from_response(ret)
 
-    def set_analog_mode(self, mode):
+    def set_analog_mode(self, mode: int):
         """Set the analog output mode.
 
         Args:
@@ -388,7 +367,7 @@ class SpceController:
         """Check if high voltage is on."""
         return self._send_request(self.create_command(SPCE_COMMAND_IS_HIGH_VOLTAGE_ON))
 
-    def set_hv_autorecovery(self, mode):
+    def set_hv_autorecovery(self, mode: int):
         """Set HV autorecovery mode.
 
         Args:
@@ -400,7 +379,8 @@ class SpceController:
 
     def get_hv_autorecovery(self):
         """Get the HV autorecovery setting."""
-        return self._send_request(self.create_command(SPCE_COMMAND_GET_HV_AUTORECOVERY))
+        ret = self._send_request(self.create_command(SPCE_COMMAND_GET_HV_AUTORECOVERY))
+        return extract_int_from_response(ret)
 
     def set_comm_mode(self, mode):
         """Set the communication mode.
@@ -414,7 +394,8 @@ class SpceController:
 
     def get_comm_mode(self):
         """Get the communication mode."""
-        return self._send_request(self.create_command(SPCE_COMMAND_GET_COMM_MODE))
+        ret = self._send_request(self.create_command(SPCE_COMMAND_GET_COMM_MODE))
+        return extract_int_from_response(ret)
 
     def set_comm_interface(self, interface):
         """Set the communication interface.
@@ -426,3 +407,30 @@ class SpceController:
             raise ValueError("Invalid communication interface (0-5).")
         return self._send_request(self.create_command(
             SPCE_COMMAND_SET_COMM_INTERFACE, str(interface)))
+
+def extract_float_from_response(response):
+    """Extract a float value from the response string."""
+    try:
+        match = re.search(r"([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)", response)
+        return float(match.group(1)) if match else None
+    except ValueError:
+        return None
+
+def extract_int_from_response(response):
+    """Extract an integer value from the response string."""
+    try:
+        match = re.search(r"([-+]?[0-9]+)", response)
+        return int(match.group(1)) if match else None
+    except ValueError:
+        return None
+
+def extract_string_from_response(response):
+    """Extract a string value from a key=value response."""
+    try:
+        parts = response.split(',')
+        for part in parts:
+            if '=' in part:
+                return part.split('=')[1].strip()
+        return response.strip()
+    except ValueError:
+        return response.strip()

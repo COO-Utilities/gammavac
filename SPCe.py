@@ -1,4 +1,5 @@
 """Gamma Vacuum SPCe model utility functions."""
+import errno
 import time
 import threading
 import socket
@@ -47,27 +48,34 @@ class SpceController:
     """Class to control a Lesker GAMMA gauge SPCe controller over a TCP socket."""
     # pylint: disable=too-many-public-methods
 
-    def __init__(self, host: str, port: int, bus_address: int =1,
-                 simulate: bool =False, log: bool =True) -> None:
+    def __init__(self, bus_address: int =1, simulate: bool =False,
+                 log: bool =True, logfile=None) -> None:
         """Initialize the SpceController.
 
         Args:
-            host (str): IP address of the controller.
-            port (int): TCP port number.
             bus_address (str): bus address of the controller (00 - FF).
             simulate (bool): If True, simulate communication.
-            logging (bool): If True, log outputs.
-        """
-        self.host = host
-        self.port = port
-        self.bus_address = bus_address
-        self.simulate = simulate
-        self.lock = threading.Lock()
-        self.sock = None
-        self.verbose = False
+            log (bool): If True, log outputs.
+            logfile (str): If specified, write logs to this file.
 
+            NOTE; default is INFO level logging, use set_verbose to increase verbosity.
+        """
+
+        # thread lock
+        self.lock = threading.Lock()
+
+        # Bus address
+        self.bus_address = bus_address
+
+        # Set up socket
+        self.sock = None
+        self.connected = False
+
+        # Set up logging
+        self.verbose = False
         if log:
-            logfile = __name__.rsplit('.', 1)[-1] + '.log'
+            if logfile is None:
+                logfile = __name__.rsplit('.', 1)[-1] + '.log'
             self.logger = logging.getLogger(logfile)
             self.logger.setLevel(logging.INFO)
             formatter = logging.Formatter(
@@ -82,17 +90,67 @@ class SpceController:
             console_handler = logging.StreamHandler(sys.stdout)
             console_handler.setFormatter(console_formatter)
             self.logger.addHandler(console_handler)
+        else:
+            self.logger = None
 
-        if not self.simulate:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.connect((self.host, self.port))
-            self.connected = True
-            self._clear_socket()
+        # Simulate mode
+        if simulate:
+            self.simulate = True
             if self.logger:
-                self.logger.info("Connected to SPCe controller at %s:%d bus %d",
-                                 self.host, self.port, self.bus_address)
+                self.logger.info("Simulate mode enabled.")
+        else:
+            self.simulate = False
+            if self.logger:
+                self.logger.info("Simulate mode disabled.")
 
-    def set_verbose(self, verbose: bool) -> None:
+    def connect(self, host: str =None, port: int = None) -> None:
+        """Connect to the controller.
+
+        Args:
+            host (str): IP address of the controller.
+            port (int): TCP port number.
+        """
+
+        if self.simulate:
+            self.connected = True
+            self.logger.info('Connected to SPCe simulator.')
+        else:
+            if self.sock is None:
+                self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                self.sock.connect((host, port))
+                self.connected = True
+                if self.logger:
+                    self.logger.info("Connected to SPCe controller at %s:%d bus %d",
+                                     host, port, self.bus_address)
+            except OSError as e:
+                if e.errno == errno.EISCONN:
+                    if self.logger:
+                        self.logger.debug("Already connected")
+                    self.connected = True
+                else:
+                    if self.logger:
+                        self.logger.error("Connection error: %s", e.strerror)
+                    self.connected = False
+            if self.connected:
+                self._clear_socket()
+
+    def disconnect(self) -> None:
+        """Disconnect from the controller."""
+        try:
+            self.sock.shutdown(socket.SHUT_RDWR)
+            self.sock.close()
+            self.connected = False
+            self.sock = None
+            if self.logger:
+                self.logger.info("Disconnected from SPCe controller")
+        except OSError as e:
+            if self.logger:
+                self.logger.error("Disconnection error: %s", e.strerror)
+            self.connected = False
+            self.sock = None
+
+    def set_verbose(self, verbose: bool =True) -> None:
         """Set verbose mode."""
         self.verbose = verbose
         if self.logger:
@@ -155,8 +213,8 @@ class SpceController:
 
         With
         ba   = address value between 01 and FF.
-        cc   = character string representing command (2 bytes)
-        data = optional value for command (e.g. baud rate, adress setting, etc.)
+        cc   = character string representing command (2 bytes).
+        data = optional value for command (e.g. baud rate, adress setting, etc.).
         """
 
         command = f" {self.bus_address:02X} {code:02X} "

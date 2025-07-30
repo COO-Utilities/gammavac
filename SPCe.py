@@ -173,6 +173,13 @@ class SpceController:
 
     def _send_command(self, command: str) -> int:
         """Send a command without expecting a response."""
+        if not self.connected:
+            if self.logger:
+                self.logger.error("Not connected to SPCe controller.")
+            else:
+                print("Not connected to SPCe controller.")
+            return -1
+
         if self.logger:
             self.logger.debug("Sending command %s", command)
         if self.simulate:
@@ -185,6 +192,13 @@ class SpceController:
 
     def _send_request(self, command: str) -> str:
         """Send a command and receive a response."""
+        if not self.connected:
+            if self.logger:
+                self.logger.error("Not connected to SPCe controller.")
+            else:
+                print("Not connected to SPCe controller.")
+            return "NOT CONNECTED"
+
         if self.logger:
             self.logger.debug("Sending request %s", command)
         if self.simulate:

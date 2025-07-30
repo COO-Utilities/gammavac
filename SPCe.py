@@ -193,11 +193,16 @@ class SpceController:
         with self.lock:
             self.sock.sendall(command.encode('utf-8'))
             time.sleep(SPCE_TIME_BETWEEN_COMMANDS)
-            recv = self.sock.recv(1024)
-            recv_len = len(recv)
-            if self.logger:
-                self.logger.debug("Return: len = %d, Value = %s",
-                                  recv_len, recv)
+            try:
+                recv = self.sock.recv(1024)
+                recv_len = len(recv)
+                if self.logger:
+                    self.logger.debug("Return: len = %d, Value = %s",
+                                      recv_len, recv)
+            except socket.timeout:
+                if self.logger:
+                    self.logger.error("Timeout while waiting for response")
+                return "TIMEOUT"
             return str(recv.decode('utf-8')).strip()
 
     def create_command(self, code, data=None):

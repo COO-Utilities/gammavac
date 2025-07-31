@@ -101,8 +101,6 @@ class SpceController:
                 self.logger.info("Simulate mode enabled.")
         else:
             self.simulate = False
-            if self.logger:
-                self.logger.info("Simulate mode disabled.")
 
     def connect(self, host: str =None, port: int = None) -> None:
         """Connect to the controller.

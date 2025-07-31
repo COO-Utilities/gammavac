@@ -9,7 +9,6 @@ def test_initialization():
 
 def test_connection_fail():
     """Test connection failure."""
-    with pytest.raises(Exception):
-        controller = SpceController()
-        controller.connect(host="127.0.0.1", port=50000)
-        assert not controller.connected
+    controller = SpceController()
+    controller.connect(host="127.0.0.1", port=50000)
+    assert not controller.connected

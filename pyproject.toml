@@ -19,3 +19,7 @@ dependencies = [
     "pyserial",
     "libximc"
 ]
+[tool.pytest.ini_options]
+pythonpath = [
+    "."
+]

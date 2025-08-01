@@ -175,7 +175,10 @@ class SpceController:
             self.sock.settimeout(2.0)
 
     def _send_command(self, command: str) -> int:
-        """Send a command without expecting a response."""
+        """Send a command without expecting a response.
+        Args:
+            command (str): command to send.
+        """
         if not self.connected:
             if self.logger:
                 self.logger.error("Not connected to SPCe controller.")
@@ -194,7 +197,12 @@ class SpceController:
         return 0
 
     def _send_request(self, command: str, response_type: str ="S") -> Union[int, float, str]:
-        """Send a command and receive a response."""
+        """Send a command and receive a response.
+        Args:
+            command (str): Command to send.
+            response_type (str): Type of response:
+                'I' for int, 'S' for str (default), 'F' for float.
+            """
         if not self.connected:
             if self.logger:
                 self.logger.error("Not connected to SPCe controller.")
@@ -222,15 +230,22 @@ class SpceController:
                 return "TIMEOUT"
             retval = str(recv.decode('utf-8')).strip()
             if self.validate_response(retval):
+                response_type = response_type.upper()
                 if response_type == "F":
                     retval = extract_float_from_response(retval)
-                if response_type == "I":
+                elif response_type == "I":
                     retval = extract_int_from_response(retval)
+                else:
+                    retval = extract_string_from_response(retval)
                 return retval
             return "NOT VALID"
 
     def create_command(self, code, data=None):
         """Create a properly formatted command string.
+
+        Args:
+            code (int): Command code.
+            data (str): Command data.
 
         This function creates a command string to be passed to
         the SPCe vacuum controller. See SPCe vacuum SPCe controller user manual

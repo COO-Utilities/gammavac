@@ -13,6 +13,7 @@ from typing import Union
 SPCE_TIME_BETWEEN_COMMANDS = 0.12
 
 # Command codes (extend as needed)
+SPCE_COMMAND_READ_MODEL = 0x01
 SPCE_COMMAND_READ_VERSION = 0x02
 SPCE_COMMAND_RESET = 0x07
 SPCE_COMMAND_SET_ARC_DETECT = 0x91
@@ -316,7 +317,7 @@ class SpceController:
         # Calculate and verify checksum
         offset = len(response) - 3
         try:
-            rcksm = int(response[offset:], 16)  # Read hex checksum
+            rcksm = int(response[offset:], 16)  # Read hex checksum to decimal
         except ValueError:
             if self.logger:
                 self.logger.error("Unable to read checksum from device.")
@@ -325,7 +326,7 @@ class SpceController:
             return False
 
         # Calculate checksum (sum of all chars before checksum, mod 256)
-        cksm = sum(ord(c) for c in response[:offset]) % 256
+        cksm = sum(ord(c) for c in response[:offset+1]) % 256
 
         if rcksm != cksm:
             if self.logger:
@@ -337,6 +338,10 @@ class SpceController:
         return True
 
     # --- Command Methods ---
+
+    def read_model(self):
+        """Read the model from the controller."""
+        return self._send_request(self.create_command(SPCE_COMMAND_READ_MODEL))
 
     def read_version(self):
         """Read the firmware version from the controller."""

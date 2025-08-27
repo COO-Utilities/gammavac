@@ -390,7 +390,7 @@ class SpceController:
     def get_pump_status(self):
         """Get the pump status."""
         return self._send_request(
-            self.create_command(SPCE_COMMAND_GET_PUMP_STATUS), "I")
+            self.create_command(SPCE_COMMAND_GET_PUMP_STATUS))
 
     def get_pump_size(self):
         """Get the configured pump size."""
@@ -477,7 +477,7 @@ class SpceController:
     def get_hv_autorecovery(self):
         """Get the HV autorecovery setting."""
         return self._send_request(
-            self.create_command(SPCE_COMMAND_GET_HV_AUTORECOVERY), "I")
+            self.create_command(SPCE_COMMAND_GET_HV_AUTORECOVERY))
 
     def set_comm_mode(self, mode):
         """Set the communication mode.

@@ -519,7 +519,7 @@ def extract_int_from_response(response):
 
 def extract_string_from_response(response):
     """Extract a string value from a key=value response."""
-    response = response.split("OK 00 ")[-1].split()[0]
+    response = " ".join(response.split("OK 00 ")[-1].split()[:-1])
     try:
         parts = response.split(',')
         for part in parts:

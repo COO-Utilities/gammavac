@@ -21,6 +21,7 @@ SPCE_COMMAND_GET_ARC_DETECT = 0x92
 SPCE_COMMAND_READ_CURRENT = 0x0A
 SPCE_COMMAND_READ_PRESSURE = 0x0B
 SPCE_COMMAND_READ_VOLTAGE = 0x0C
+SPCE_COMMAND_GET_PUMP_STATUS = 0x0D
 SPCE_COMMAND_SET_PRESS_UNITS = 0x0E
 SPCE_COMMAND_GET_PUMP_SIZE = 0x11
 SPCE_COMMAND_SET_PUMP_SIZE = 0x12
@@ -385,6 +386,11 @@ class SpceController:
         if unit_char not in [SPCE_UNITS_TORR, SPCE_UNITS_MBAR, SPCE_UNITS_PASCAL]:
             raise ValueError("Invalid unit. Use 'T', 'M', or 'P'.")
         return self._send_request(self.create_command(SPCE_COMMAND_SET_PRESS_UNITS, unit_char))
+
+    def get_pump_status(self):
+        """Get the pump status."""
+        return self._send_request(
+            self.create_command(SPCE_COMMAND_GET_PUMP_STATUS), "I")
 
     def get_pump_size(self):
         """Get the configured pump size."""

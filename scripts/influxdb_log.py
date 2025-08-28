@@ -21,8 +21,8 @@ def main(config_file):
     write_api = db_client.write_api(write_options=SYNCHRONOUS)
 
     ## Connect to GammaVac SPCe
-    gv = SPCe.SpceController(bus_address=1)     # set bus_address as appropriate
-    gv.connect(host="localhost", port=10016)    # Terminal Server IP and port
+    gv = SPCe.SpceController(bus_address=cfg['gamma_bus_address'])  # set bus_address as appropriate
+    gv.connect(host=cfg['gamma_host'], port=cfg['gamma_port'])      # Terminal Server IP and port
 
     ## Check pump status
     if 'Running' in gv.get_pump_status():

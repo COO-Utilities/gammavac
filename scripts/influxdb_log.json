@@ -7,5 +7,6 @@
   "gamma_host": "lantronix",
   "gamma_port": 10016,
   "gamma_bus_address": 1,
-  "interval_secs": 30
+  "interval_secs": 30,
+  "verbose": 0
 }

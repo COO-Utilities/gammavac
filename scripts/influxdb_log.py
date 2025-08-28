@@ -15,12 +15,17 @@ def main(config_file):
     with open(config_file, encoding='utf-8') as cfg_file:
         cfg = json.load(cfg_file)
 
+    verbose = cfg['verbose'] == 1
+
     ## Connect to InfluxDB
-    print("Connecting to InfluxDB...")
+    if verbose:
+        print("Connecting to InfluxDB...")
     db_client = InfluxDBClient(url=cfg['url'], token=cfg['db_token'], org=cfg['org'])
     write_api = db_client.write_api(write_options=SYNCHRONOUS)
 
     ## Connect to GammaVac SPCe
+    if verbose:
+        print("Connecting to SPCe controller...")
     gv = SPCe.SpceController(bus_address=cfg['gamma_bus_address'])  # set bus_address as appropriate
     gv.connect(host=cfg['gamma_host'], port=cfg['gamma_port'])      # Terminal Server IP and port
 
@@ -32,14 +37,16 @@ def main(config_file):
                 pressure = gv.read_pressure()
                 current = gv.read_current()
                 voltage = gv.read_voltage()
-                ppoint = (
+                point = (
                     Point("gammavac")
                     .field("Torr", pressure)
                     .field("Amps", current)
                     .field("volts", voltage)
                     .tag("channel", f"{cfg['channel']}")
                 )
-                write_api.write(bucket=cfg['bucket'], org=cfg['org'], record=ppoint)
+                write_api.write(bucket=cfg['bucket'], org=cfg['org'], record=point)
+                if verbose:
+                    print(point)
                 time.sleep(cfg['interval_secs'])
         except KeyboardInterrupt:
             print("Shutting down InfluxDB logging...")

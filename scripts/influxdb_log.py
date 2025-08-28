@@ -27,33 +27,24 @@ def main(config_file):
     ## Check pump status
     if 'Running' in gv.get_pump_status():
         gv.set_units("T")   # set units to Torr
-        while True:
-            pressure = gv.read_pressure()
-            current = gv.read_current()
-            voltage = gv.read_voltage()
-            ppoint = (
-                Point("measurement")
-                .tag("channel", f"{cfg['channel']}")
-                .tag("units", "Torr")
-                .field("pressure", pressure)
-            )
-            write_api.write(bucket=cfg['bucket'], org=cfg['org'], record=ppoint)
-            cpoint = (
-                Point("measurement")
-                .tag("channel", f"{cfg['channel']}")
-                .tag("units", "Amps")
-                .field("current", current)
-            )
-            write_api.write(bucket=cfg['bucket'], org=cfg['org'], record=cpoint)
-            vpoint = (
-                Point("measurement")
-                .tag("channel", f"{cfg['channel']}")
-                .tag("units", "Volts")
-                .field("voltage", voltage)
-            )
-            write_api.write(bucket=cfg['bucket'], org=cfg['org'], record=vpoint)
-            time.sleep(cfg['interval_secs'])
-
+        try:
+            while True:
+                pressure = gv.read_pressure()
+                current = gv.read_current()
+                voltage = gv.read_voltage()
+                ppoint = (
+                    Point("gammavac")
+                    .field("Torr", pressure)
+                    .field("Amps", current)
+                    .field("volts", voltage)
+                    .tag("channel", f"{cfg['channel']}")
+                )
+                write_api.write(bucket=cfg['bucket'], org=cfg['org'], record=ppoint)
+                time.sleep(cfg['interval_secs'])
+        except KeyboardInterrupt:
+            print("Shutting down InfluxDB logging...")
+            db_client.close()
+            gv.disconnect()
     else:
         print("Pump not running")
 

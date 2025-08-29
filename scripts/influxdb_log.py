@@ -20,14 +20,14 @@ def main(config_file):
     ## Connect to InfluxDB
     if verbose:
         print("Connecting to InfluxDB...")
-    db_client = InfluxDBClient(url=cfg['url'], token=cfg['db_token'], org=cfg['org'])
+    db_client = InfluxDBClient(url=cfg['db_url'], token=cfg['db_token'], org=cfg['db_org'])
     write_api = db_client.write_api(write_options=SYNCHRONOUS)
 
     ## Connect to GammaVac SPCe
     if verbose:
         print("Connecting to SPCe controller...")
     gv = SPCe.SpceController(bus_address=cfg['gamma_bus_address'])  # set bus_address as appropriate
-    gv.connect(host=cfg['gamma_host'], port=cfg['gamma_port'])      # Terminal Server IP and port
+    gv.connect(host=cfg['device_host'], port=cfg['device_port'])      # Terminal Server IP and port
 
     ## Check pump status
     if 'Running' in gv.get_pump_status():
@@ -42,7 +42,7 @@ def main(config_file):
                     .tag("units", "Torr")
                     .tag("channel", f"{cfg['channel']}")
                 )
-                write_api.write(bucket=cfg['bucket'], org=cfg['org'], record=ppoint)
+                write_api.write(bucket=cfg['db_bucket'], org=cfg['db_org'], record=ppoint)
                 if verbose:
                     print(ppoint)
                 current = gv.read_current()
@@ -53,7 +53,7 @@ def main(config_file):
                     .tag("units", "Amps")
                     .tag("channel", f"{cfg['channel']}")
                 )
-                write_api.write(bucket=cfg['bucket'], org=cfg['org'], record=cpoint)
+                write_api.write(bucket=cfg['db_bucket'], org=cfg['db_org'], record=cpoint)
                 if verbose:
                     print(cpoint)
                 ## Voltage
@@ -64,7 +64,7 @@ def main(config_file):
                     .tag("units", "Volts")
                     .tag("channel", f"{cfg['channel']}")
                 )
-                write_api.write(bucket=cfg['bucket'], org=cfg['org'], record=vpoint)
+                write_api.write(bucket=cfg['db_bucket'], org=cfg['db_org'], record=vpoint)
                 if verbose:
                     print(vpoint)
                 # Sleep for interval_secs

@@ -40,7 +40,7 @@ def main(config_file):
                     Point("gammavac")
                     .field("pressure", pressure)
                     .tag("units", "Torr")
-                    .tag("channel", f"{cfg['channel']}")
+                    .tag("channel", f"{cfg['db_channel']}")
                 )
                 write_api.write(bucket=cfg['db_bucket'], org=cfg['db_org'], record=ppoint)
                 if verbose:
@@ -51,7 +51,7 @@ def main(config_file):
                     Point("gammavac")
                     .field("current", current)
                     .tag("units", "Amps")
-                    .tag("channel", f"{cfg['channel']}")
+                    .tag("channel", f"{cfg['db_channel']}")
                 )
                 write_api.write(bucket=cfg['db_bucket'], org=cfg['db_org'], record=cpoint)
                 if verbose:
@@ -62,7 +62,7 @@ def main(config_file):
                     Point("gammavac")
                     .field("voltage", voltage)
                     .tag("units", "Volts")
-                    .tag("channel", f"{cfg['channel']}")
+                    .tag("channel", f"{cfg['db_channel']}")
                 )
                 write_api.write(bucket=cfg['db_bucket'], org=cfg['db_org'], record=vpoint)
                 if verbose:

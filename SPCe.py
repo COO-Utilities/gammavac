@@ -50,7 +50,7 @@ class SpceController(HardwareDeviceBase):
     # pylint: disable=too-many-public-methods
 
     def __init__(self, bus_address: int =1, simulate: bool =False,
-                 log: bool =True, logfile=None) -> None:
+                 log: bool =True, logfile: str = __name__.rsplit(".", 1)[-1] ) -> None:
         """Initialize the SpceController.
 
         Args:

@@ -41,7 +41,7 @@ def main(config_file):
     if logger:
         logger.info('Connecting to InfluxDB...')
     gv = SPCe.SpceController(bus_address=cfg['gamma_bus_address'])  # set bus_address as appropriate
-    gv.connect(host=cfg['device_host'], port=cfg['device_port'])      # Terminal Server IP and port
+    gv.connect(cfg['device_host'], cfg['device_port'])      # Terminal Server IP and port
 
     ## Check pump status
     if 'Running' in gv.get_pump_status():

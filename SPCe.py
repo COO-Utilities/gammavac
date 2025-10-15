@@ -1,13 +1,11 @@
 """Gamma Vacuum SPCe model utility functions."""
 import errno
 import time
-import threading
 import socket
 import re
-import sys
-
-import logging
 from typing import Union
+
+from hardware_device_base import HardwareDeviceBase
 
 # Constants (partial, extend as needed)
 SPCE_TIME_BETWEEN_COMMANDS = 0.12
@@ -47,7 +45,7 @@ SPCE_UNITS_MBAR = 'M'
 SPCE_UNITS_PASCAL = 'P'
 
 
-class SpceController:
+class SpceController(HardwareDeviceBase):
     """Class to control a Lesker GAMMA gauge SPCe controller over a TCP socket."""
     # pylint: disable=too-many-public-methods
 
@@ -63,78 +61,60 @@ class SpceController:
 
             NOTE; default is INFO level logging, use set_verbose to increase verbosity.
         """
-
-        # thread lock
-        self.lock = threading.Lock()
+        super().__init__(log, logfile)
 
         # Bus address
         self.bus_address = bus_address
 
         # Set up socket
         self.sock = None
-        self.connected = False
-
-        # Set up logging
-        self.verbose = False
-        if log:
-            if logfile is None:
-                logfile = __name__.rsplit('.', 1)[-1] + '.log'
-            self.logger = logging.getLogger(logfile)
-            self.logger.setLevel(logging.INFO)
-            formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            )
-            file_handler = logging.FileHandler(logfile)
-            file_handler.setFormatter(formatter)
-            self.logger.addHandler(file_handler)
-
-            console_formatter = logging.Formatter(
-                '%(asctime)s--%(message)s')
-            console_handler = logging.StreamHandler(sys.stdout)
-            console_handler.setFormatter(console_formatter)
-            self.logger.addHandler(console_handler)
-        else:
-            self.logger = None
 
         # Simulate mode
         if simulate:
             self.simulate = True
-            if self.logger:
-                self.logger.info("Simulate mode enabled.")
+            self.logger.info("Simulate mode enabled.")
         else:
             self.simulate = False
 
-    def connect(self, host: str =None, port: int = None) -> None:
+    def connect(self, *args, con_type="tcp") -> None:
         """Connect to the controller.
 
-        Args:
-            host (str): IP address of the controller.
-            port (int): TCP port number.
+        :param args: for tcp connection, host and port, for serial, port and baudrate
+        :param con_type: tcp or serial
         """
-
-        if self.simulate:
-            self.connected = True
-            self.logger.info('Connected to SPCe simulator.')
-        else:
-            if self.sock is None:
-                self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            try:
-                self.sock.connect((host, port))
+        if self.validate_connection_params(args):
+            if self.simulate:
                 self.connected = True
-                if self.logger:
-                    self.logger.info("Connected to SPCe controller at %s:%d bus %d",
-                                     host, port, self.bus_address)
-            except OSError as e:
-                if e.errno == errno.EISCONN:
-                    if self.logger:
-                        self.logger.debug("Already connected")
-                    self.connected = True
+                self.logger.info('Connected to SPCe simulator.')
+            else:
+                if con_type == "tcp":
+                    host = args[0]
+                    port = args[1]
+                    if self.sock is None:
+                        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    try:
+                        self.sock.connect((host, port))
+                        self._set_connected(True)
+                        self.logger.info("Connected to SPCe controller at %s:%d bus %d",
+                                         host, port, self.bus_address)
+                    except OSError as e:
+                        if e.errno == errno.EISCONN:
+                            self.logger.debug("Already connected")
+                            self._set_connected(True)
+                        else:
+                            self.logger.error("Connection error: %s", e.strerror)
+                            self._set_connected(False)
+                    if self.connected:
+                        self._clear_socket()
+                elif con_type == "serial":
+                    self.logger.error("Serial connection not implemented.")
+                    self._set_connected(False)
                 else:
-                    if self.logger:
-                        self.logger.error("Connection error: %s", e.strerror)
-                    self.connected = False
-            if self.connected:
-                self._clear_socket()
+                    self.logger.error("Unknown con_type: %s", con_type)
+                    self._set_connected(False)
+        else:
+            self.logger.error("Invalid connection args: %s", args)
+            self._set_connected(False)
 
     def disconnect(self) -> None:
         """Disconnect from the controller."""
@@ -145,24 +125,13 @@ class SpceController:
             try:
                 self.sock.shutdown(socket.SHUT_RDWR)
                 self.sock.close()
-                self.connected = False
+                self._set_connected(False)
                 self.sock = None
-                if self.logger:
-                    self.logger.info("Disconnected from SPCe controller")
+                self.logger.info("Disconnected from SPCe controller")
             except OSError as e:
-                if self.logger:
-                    self.logger.error("Disconnection error: %s", e.strerror)
-                self.connected = False
+                self.logger.error("Disconnection error: %s", e.strerror)
+                self._set_connected(False)
                 self.sock = None
-
-    def set_verbose(self, verbose: bool =True) -> None:
-        """Set verbose mode."""
-        self.verbose = verbose
-        if self.logger:
-            if self.verbose:
-                self.logger.setLevel(logging.DEBUG)
-            else:
-                self.logger.setLevel(logging.INFO)
 
     def _clear_socket(self):
         """ Clear socket buffer. """
@@ -176,27 +145,35 @@ class SpceController:
             self.sock.setblocking(True)
             self.sock.settimeout(2.0)
 
-    def _send_command(self, command: str) -> int:
+    def _send_command(self, command: str, *args) -> bool:
         """Send a command without expecting a response.
         Args:
             command (str): command to send.
         """
-        if not self.connected:
-            if self.logger:
-                self.logger.error("Not connected to SPCe controller.")
-            else:
-                print("Not connected to SPCe controller.")
-            return -1
+        if not self.is_connected:
+            self.logger.error("Not connected to SPCe controller.")
+            return False
 
-        if self.logger:
-            self.logger.debug("Sending command %s", command)
+        self.logger.debug("Sending command %s", command)
         if self.simulate:
             print(f"[SIM SEND] {command}")
-            return 0
+            return True
         with self.lock:
             self.sock.sendall(command.encode('utf-8'))
             time.sleep(SPCE_TIME_BETWEEN_COMMANDS)
-        return 0
+        return True
+
+    def _read_reply(self) -> Union[str, None]:
+        """Read a reply from the controller."""
+        if not self.is_connected:
+            self.logger.error("Not connected to SPCe controller.")
+            return None
+        try:
+            reply = self.sock.recv(1024).decode('utf-8').strip()
+            self.logger.debug("Received reply %s", reply)
+            return reply
+        except Exception as ex:
+            raise IOError(f"Failed to _read_reply message: {ex}") from ex
 
     def _send_request(self, command: str, response_type: str ="S") -> Union[int, float, str]:
         """Send a command and receive a response.
@@ -206,14 +183,10 @@ class SpceController:
                 'I' for int, 'S' for str (default), 'F' for float.
             """
         if not self.connected:
-            if self.logger:
-                self.logger.error("Not connected to SPCe controller.")
-            else:
-                print("Not connected to SPCe controller.")
+            self.logger.error("Not connected to SPCe controller.")
             return "NOT CONNECTED"
 
-        if self.logger:
-            self.logger.debug("Sending request %s", command)
+        self.logger.debug("Sending request %s", command)
         if self.simulate:
             print(f"[SIM REQ] {command}")
             return "SIM_RESPONSE"
@@ -223,12 +196,9 @@ class SpceController:
             try:
                 recv = self.sock.recv(1024)
                 recv_len = len(recv)
-                if self.logger:
-                    self.logger.debug("Return: len = %d, Value = %s",
-                                      recv_len, recv)
+                self.logger.debug("Return: len = %d, Value = %s", recv_len, recv)
             except socket.timeout:
-                if self.logger:
-                    self.logger.error("Timeout while waiting for response")
+                self.logger.error("Timeout while waiting for response")
                 return "TIMEOUT"
             retval = str(recv.decode('utf-8')).strip()
             if self.validate_response(retval):
@@ -288,17 +258,11 @@ class SpceController:
             # The First field must be the bus address
             bus = int(response.split()[0])
         except (ValueError, IndexError):
-            if self.logger:
-                self.logger.error("Invalid response from device.")
-            else:
-                print("Invalid response from device.")
+            self.logger.error("Invalid response from device.")
             return False
 
         if bus != self.bus_address:
-            if self.logger:
-                self.logger.error("Invalid bus address from device.")
-            else:
-                print("Invalid bus address from device.")
+            self.logger.error("Invalid bus address from device.")
             return False
 
         # Now check for error condition or valid response
@@ -307,10 +271,7 @@ class SpceController:
         if substr.startswith("ER"):
             try:
                 error_code_str = substr[3:]
-                if self.logger:
-                    self.logger.error(error_code_str)
-                else:
-                    print(error_code_str)
+                self.logger.error(error_code_str)
             except ValueError:
                 pass
             return False
@@ -320,25 +281,31 @@ class SpceController:
         try:
             rcksm = int(response[offset:], 16)  # Read hex checksum to decimal
         except ValueError:
-            if self.logger:
-                self.logger.error("Unable to read checksum from device.")
-            else:
-                print("Unable to read checksum from device.")
+            self.logger.error("Unable to read checksum from device.")
             return False
 
         # Calculate checksum (sum of all chars before checksum, mod 256)
         cksm = sum(ord(c) for c in response[:offset+1]) % 256
 
         if rcksm != cksm:
-            if self.logger:
-                self.logger.error("Invalid checksum from device.")
-            else:
-                print("Invalid checksum from device.")
+            self.logger.error("Invalid checksum from device.")
             return False
 
         return True
 
     # --- Command Methods ---
+    def get_atomic_value(self, item: str ="") -> Union[float, int, str, None]:
+        """Get an atomic telemetry value."""
+        if item == "pressure":
+            value = self.read_pressure()
+        elif item == "current":
+            value = self.read_current()
+        elif item == "voltage":
+            value = self.read_voltage()
+        else:
+            self.logger.error("Invalid item from device.")
+            value = None
+        return value
 
     def read_model(self):
         """Read the model from the controller."""

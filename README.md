@@ -10,6 +10,16 @@ Low-level library for communicating with a Gamma Vacuum SPCe controller
 - Query state and parameters
 - Set individual parameters
 
+## Requirements
+
+- Install base class from https://github.com/COO-Utilities/hardware_device_base
+
+## Installation
+
+```bash
+pip install .
+```
+
 ## Usage
 
 ```python

@@ -5,6 +5,12 @@ import socket
 import re
 from typing import Union
 
+try:
+    import serial
+    SERIAL_AVAILABLE = True
+except ImportError:
+    SERIAL_AVAILABLE = False
+
 from hardware_device_base import HardwareDeviceBase
 
 # Constants (partial, extend as needed)
@@ -66,8 +72,9 @@ class SpceController(HardwareDeviceBase):
         # Bus address
         self.bus_address = bus_address
 
-        # Set up socket
+        # Set up socket/serial
         self.sock = None
+        self.serial = None
 
         # Simulate mode
         if simulate:
@@ -107,8 +114,35 @@ class SpceController(HardwareDeviceBase):
                     if self.connected:
                         self._clear_socket()
                 elif con_type == "serial":
-                    self.logger.error("Serial connection not implemented.")
-                    self._set_connected(False)
+                    if not SERIAL_AVAILABLE:
+                        self.logger.error("pyserial not installed. Install with: pip install pyserial")
+                        self._set_connected(False)
+                        return
+
+                    port = args[0]
+                    baudrate = args[1] if len(args) > 1 else 115200
+                    parity = args[2] if len(args) > 2 else 'N'
+                    bytesize = args[3] if len(args) > 3 else 8
+                    stopbits = args[4] if len(args) > 4 else 1
+
+                    try:
+                        self.serial = serial.Serial(
+                            port=port,
+                            baudrate=baudrate,
+                            bytesize=bytesize,
+                            parity=parity,
+                            stopbits=stopbits,
+                            timeout=2.0
+                        )
+                        self._set_connected(True)
+                        self.logger.info("Connected to SPCe controller via serial %s at %d baud (%d%s%s), bus %d",
+                                       port, baudrate, bytesize, parity, stopbits, self.bus_address)
+                        # Clear any buffered data
+                        self.serial.reset_input_buffer()
+                        self.serial.reset_output_buffer()
+                    except serial.SerialException as e:
+                        self.logger.error("Serial connection error: %s", str(e))
+                        self._set_connected(False)
                 else:
                     self.logger.error("Unknown con_type: %s", con_type)
                     self._set_connected(False)
@@ -123,15 +157,20 @@ class SpceController(HardwareDeviceBase):
             self.connected = False
         else:
             try:
-                self.sock.shutdown(socket.SHUT_RDWR)
-                self.sock.close()
+                if self.sock is not None:
+                    self.sock.shutdown(socket.SHUT_RDWR)
+                    self.sock.close()
+                    self.sock = None
+                if self.serial is not None:
+                    self.serial.close()
+                    self.serial = None
                 self._set_connected(False)
-                self.sock = None
                 self.logger.info("Disconnected from SPCe controller")
-            except OSError as e:
-                self.logger.error("Disconnection error: %s", e.strerror)
+            except (OSError, serial.SerialException if SERIAL_AVAILABLE else Exception) as e:
+                self.logger.error("Disconnection error: %s", str(e))
                 self._set_connected(False)
                 self.sock = None
+                self.serial = None
 
     def _clear_socket(self):
         """ Clear socket buffer. """
@@ -159,7 +198,10 @@ class SpceController(HardwareDeviceBase):
             print(f"[SIM SEND] {command}")
             return True
         with self.lock:
-            self.sock.sendall(command.encode('utf-8'))
+            if self.sock is not None:
+                self.sock.sendall(command.encode('utf-8'))
+            elif self.serial is not None:
+                self.serial.write(command.encode('utf-8'))
             time.sleep(SPCE_TIME_BETWEEN_COMMANDS)
         return True
 
@@ -169,7 +211,12 @@ class SpceController(HardwareDeviceBase):
             self.logger.error("Not connected to SPCe controller.")
             return None
         try:
-            reply = self.sock.recv(1024).decode('utf-8').strip()
+            if self.sock is not None:
+                reply = self.sock.recv(1024).decode('utf-8').strip()
+            elif self.serial is not None:
+                reply = self.serial.read_until(b'\r').decode('utf-8').strip()
+            else:
+                return None
             self.logger.debug("Received reply %s", reply)
             return reply
         except Exception as ex:
@@ -191,13 +238,26 @@ class SpceController(HardwareDeviceBase):
             print(f"[SIM REQ] {command}")
             return "SIM_RESPONSE"
         with self.lock:
-            self.sock.sendall(command.encode('utf-8'))
+            # Send command
+            if self.sock is not None:
+                self.sock.sendall(command.encode('utf-8'))
+            elif self.serial is not None:
+                self.serial.write(command.encode('utf-8'))
+
             time.sleep(SPCE_TIME_BETWEEN_COMMANDS)
+
+            # Receive response
             try:
-                recv = self.sock.recv(1024)
+                if self.sock is not None:
+                    recv = self.sock.recv(1024)
+                elif self.serial is not None:
+                    recv = self.serial.read_until(b'\r')
+                else:
+                    return "NOT CONNECTED"
+
                 recv_len = len(recv)
                 self.logger.debug("Return: len = %d, Value = %s", recv_len, recv)
-            except socket.timeout:
+            except (socket.timeout, serial.SerialTimeoutException if SERIAL_AVAILABLE else Exception):
                 self.logger.error("Timeout while waiting for response")
                 return "TIMEOUT"
             retval = str(recv.decode('utf-8')).strip()

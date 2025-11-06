@@ -5,7 +5,7 @@
 controller:
   connection_type: "serial"  # "serial" or "tcp"
   # Serial connection settings - using virtual serial port
-  serial_port: "/tmp/vserial_bot"  # Virtual serial port created by setup_virtual_serial.sh
+  serial_port: "COM8"  # Virtual serial port created by setup_virtual_serial.sh
   baudrate: 115200             # Baud rate for serial communication (default: 115200)
   parity: "N"                  # Parity: "N" (none), "E" (even), "O" (odd), "M" (mark), "S" (space)
   bytesize: 8                  # Data bits: 5, 6, 7, or 8
@@ -18,12 +18,4 @@ controller:
 # Monitoring Settings
 monitoring:
   poll_interval: 10            # Seconds between readings (faster for testing)
-  log_file: "/home/clarencecqt/Documents/GitHub/gammavac_monitoring/test_data.csv"  # Full path to store readings
-
-# Alert Settings
-alerts:
-  current_threshold: 5.0       # Alert when current exceeds this value (mA)
-
-# Telegram Bot Settings
-telegram:
-  admin_chat_ids: []           # List of chat IDs to receive alerts (empty = all users)
+  log_file: "tests/test_data.csv"  # Path to store readings (relative to project root)

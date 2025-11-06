@@ -16,6 +16,9 @@ requires-python = ">=3.7"
 dependencies = [
     "hardware_device_base@git+https://github.com/COO-Utilities/hardware_device_base#egg=main"
 ]
+
+[tool.setuptools]
+py-modules = ["SPCe", "spce_simulator"]
 [tool.pytest.ini_options]
 pythonpath = [
     "."

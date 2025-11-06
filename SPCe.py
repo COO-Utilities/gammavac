@@ -260,7 +260,7 @@ class SpceController(HardwareDeviceBase):
             except (socket.timeout, serial.SerialTimeoutException if SERIAL_AVAILABLE else Exception):
                 self.logger.error("Timeout while waiting for response")
                 return "TIMEOUT"
-            retval = str(recv.decode('utf-8')).strip()
+            retval = str(recv.decode('utf-8'))
             if self.validate_response(retval):
                 response_type = response_type.upper()
                 if response_type == "F":
@@ -345,7 +345,7 @@ class SpceController(HardwareDeviceBase):
             return False
 
         # Calculate checksum (sum of all chars before checksum, mod 256)
-        cksm = sum(ord(c) for c in response[:offset+1]) % 256
+        cksm = sum(ord(c) for c in response[:offset]) % 256
 
         if rcksm != cksm:
             self.logger.error("Invalid checksum from device.")

@@ -156,14 +156,10 @@ class SPCeSimulator:
         SPCE_COMMAND_GET_PUMP_SIZE = 0x11
 
         # Add some random variation to readings
-        self.voltage += random.uniform(-0.1, 0.1)
-        self.current += random.uniform(-0.2, 0.2)
-        self.pressure += random.uniform(-1e-7, 1e-7)
-
-        # Keep values in reasonable ranges
-        self.voltage = max(0, min(7.0, self.voltage))
-        self.current = max(0, min(10.0, self.current))
-        self.pressure = max(1e-8, min(1e-4, self.pressure))
+        self.voltage = 7000
+        current = random.uniform(10, 20)
+        self.pressure = current * 1e-7 * random.uniform(0.8, 1.2)
+        self.current = current
 
         # Handle specific commands
         if cmd_code == SPCE_COMMAND_READ_MODEL:

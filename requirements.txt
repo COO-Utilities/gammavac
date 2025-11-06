@@ -1,0 +1,11 @@
+# Telegram Bot
+python-telegram-bot>=20.0
+
+# Configuration
+python-dotenv>=1.0.0
+PyYAML>=6.0
+
+# Serial communication
+pyserial>=3.5
+
+# The gammavac package and hardware_device_base are installed via pip install -e .

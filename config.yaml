@@ -1,0 +1,28 @@
+# Gamma Vacuum Monitor Configuration
+
+# SPCe Controller Connection Settings
+controller:
+  connection_type: "serial"  # "serial" or "tcp"
+  # Serial connection settings
+  serial_port: "/dev/ttyUSB0"  # Serial port (e.g., /dev/ttyUSB0 on Linux, COM3 on Windows)
+  baudrate: 115200             # Baud rate for serial communication (default: 115200)
+  parity: "N"                  # Parity: "N" (none), "E" (even), "O" (odd), "M" (mark), "S" (space)
+  bytesize: 8                  # Data bits: 5, 6, 7, or 8
+  stopbits: 1                  # Stop bits: 1, 1.5, or 2
+  # TCP connection settings (unused if connection_type is "serial")
+  host: "192.168.29.100"       # Terminal server IP address
+  port: 10015                  # Terminal server port
+  bus_address: 5               # SPCe bus address (1-255)
+
+# Monitoring Settings
+monitoring:
+  poll_interval: 60        # Seconds between readings
+  log_file: "/home/clarencecqt/Documents/GitHub/gammavac_monitoring/gammavac_data.csv"  # Full path to store readings
+
+# Alert Settings
+alerts:
+  current_threshold: 5.0   # Alert when current exceeds this value (mA)
+
+# Telegram Bot Settings
+telegram:
+  admin_chat_ids: []       # List of chat IDs to receive alerts (empty = all users)

@@ -62,7 +62,7 @@ class GammavacMonitor:
         self._ensure_log_file()
 
         # Alert tracking
-        self.alert_active = False
+        self.alert_level = 0  # Tracks which threshold multiple we're at (0 = no alert)
         self.subscribed_users = set()
 
         # Telegram application
@@ -212,14 +212,21 @@ class GammavacMonitor:
                     current = data['current']*1e6 # convert to uA
                     threshold = self.config['alerts']['current_threshold'] # configured in uA
 
-                    # Check if alert condition met
-                    if current > threshold and not self.alert_active:
-                        # Send alert to subscribed users
-                        self.alert_active = True
+                    # Calculate current threshold level (0 = below threshold, 1 = 1x threshold, 2 = 2x threshold, etc.)
+                    if current > threshold:
+                        new_level = int(current / threshold)
+                    else:
+                        new_level = 0
+
+                    # Check if we've crossed into a new alert level
+                    if new_level > self.alert_level:
+                        # Escalation: crossed into a higher threshold multiple
+                        self.alert_level = new_level
                         alert_msg = (
                             f"⚠️ ALERT: Current threshold exceeded!\n"
+                            f"Alert Level: {new_level}x threshold\n"
                             f"Current: {current:.2f} uA\n"
-                            f"Threshold: {threshold:.2f} uA\n"
+                            f"Threshold: {threshold:.2f} uA (Level {new_level}: {new_level * threshold:.2f} uA)\n"
                             f"Voltage: {data['voltage']:.2f} V\n"
                             f"Pressure: {data['pressure']:.2e} mbar"
                         )
@@ -234,14 +241,26 @@ class GammavacMonitor:
                             except Exception as e:
                                 logger.error(f"Error sending alert to {chat_id}: {e}")
 
-                    # Reset alert if current drops below threshold
-                    elif current <= threshold and self.alert_active:
-                        self.alert_active = False
-                        recovery_msg = (
-                            f"✅ Current back to normal\n"
-                            f"Current: {current:.2f} uA\n"
-                            f"Threshold: {threshold:.2f} uA"
-                        )
+                    # Check if current dropped to a lower level
+                    elif new_level < self.alert_level:
+                        old_level = self.alert_level
+                        self.alert_level = new_level
+
+                        if new_level == 0:
+                            # Full recovery - back below threshold
+                            recovery_msg = (
+                                f"✅ Current back to normal\n"
+                                f"Current: {current:.2f} uA\n"
+                                f"Threshold: {threshold:.2f} uA"
+                            )
+                        else:
+                            # Partial recovery - still above threshold but dropped a level
+                            recovery_msg = (
+                                f"📉 Current decreased\n"
+                                f"From Level {old_level}x to Level {new_level}x\n"
+                                f"Current: {current:.2f} uA\n"
+                                f"Threshold: {threshold:.2f} uA"
+                            )
 
                         for chat_id in self.subscribed_users:
                             try:
@@ -325,13 +344,14 @@ class GammavacMonitor:
             await update.message.reply_text("❌ Error reading from controller")
             return
 
+        threshold = self.config['alerts']['current_threshold']
         status_msg = (
             "📊 Current Status\n\n"
             f"Voltage: {data['voltage']:.2f} V\n"
             f"Current: {data['current']:.2f} uA\n"
             f"Pressure: {data['pressure']:.2e} mbar\n\n"
-            f"Alert threshold: {self.config['alerts']['current_threshold']} uA\n"
-            f"Alert status: {'🔴 ACTIVE' if self.alert_active else '🟢 Normal'}"
+            f"Alert threshold: {threshold} uA\n"
+            f"Alert status: {'🟢 Normal' if self.alert_level == 0 else f'🔴 Level {self.alert_level}x ({self.alert_level * threshold:.2f} uA)'}"
         )
 
         await update.message.reply_text(status_msg)

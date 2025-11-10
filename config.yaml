@@ -4,7 +4,7 @@
 controller:
   connection_type: "serial"  # "serial" or "tcp"
   # Serial connection settings
-  serial_port: "/dev/ttyUSB0"  # Serial port (e.g., /dev/ttyUSB0 on Linux, COM3 on Windows)
+  serial_port: "COM21"  # Serial port (e.g., /dev/ttyUSB0 on Linux, COM3 on Windows)
   baudrate: 115200             # Baud rate for serial communication (default: 115200)
   parity: "N"                  # Parity: "N" (none), "E" (even), "O" (odd), "M" (mark), "S" (space)
   bytesize: 8                  # Data bits: 5, 6, 7, or 8
@@ -16,12 +16,12 @@ controller:
 
 # Monitoring Settings
 monitoring:
-  poll_interval: 60        # Seconds between readings
-  log_file: "/home/clarencecqt/Documents/GitHub/gammavac_monitoring/gammavac_data.csv"  # Full path to store readings
+  poll_interval: 30        # Seconds between readings
+  log_file: "//192.168.100.131/coldion/ULE_ionpump_log/data_log.csv"  # Full path to store readings
 
 # Alert Settings
 alerts:
-  current_threshold: 5.0   # Alert when current exceeds this value (mA)
+  current_threshold: 50   # Alert when current exceeds this value (uA)
 
 # Telegram Bot Settings
 telegram:

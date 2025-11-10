@@ -73,7 +73,7 @@ class GammavacMonitor:
         if not self.log_file.exists():
             with open(self.log_file, 'w', newline='') as f:
                 writer = csv.writer(f)
-                writer.writerow(['timestamp', 'voltage', 'current', 'pressure'])
+                writer.writerow(['timestamp', 'voltage_V', 'current_uA', 'pressure_mbar'])
 
     async def connect_controller(self) -> bool:
         """Connect to the SPCe controller.
@@ -135,7 +135,7 @@ class GammavacMonitor:
         try:
             # Read values
             voltage = self.controller.read_voltage()
-            current = self.controller.read_current()
+            current = self.controller.read_current()*1e6
             pressure = self.controller.read_pressure()
 
             # Create data record
@@ -152,7 +152,7 @@ class GammavacMonitor:
                 writer = csv.writer(f)
                 writer.writerow([timestamp, voltage, current, pressure])
 
-            logger.info(f"Logged: V={voltage}V, I={current}mA, P={pressure}Torr")
+            logger.info(f"Logged: V={voltage}V, I={current}uA, P={pressure}mbar")
             return data
 
         except Exception as e:
@@ -192,9 +192,9 @@ class GammavacMonitor:
             dt = datetime.fromisoformat(reading['timestamp'])
             time_str = dt.strftime('%Y-%m-%d %H:%M:%S')
             return (f"{time_str}\n"
-                   f"  V: {float(reading['voltage']):.2f} V\n"
-                   f"  I: {float(reading['current']):.2f} mA\n"
-                   f"  P: {float(reading['pressure']):.2e} Torr")
+                   f"  V: {float(reading['voltage_V']):.2f} V\n"
+                   f"  I: {float(reading['current_uA']):.2f} uA\n"
+                   f"  P: {float(reading['pressure_mbar']):.2e} mbar")
         except Exception as e:
             logger.error(f"Error formatting reading: {e}")
             return "Error formatting reading"
@@ -209,8 +209,8 @@ class GammavacMonitor:
                 data = self.read_and_log()
 
                 if data:
-                    current = data['current']
-                    threshold = self.config['alerts']['current_threshold']
+                    current = data['current']*1e6 # convert to uA
+                    threshold = self.config['alerts']['current_threshold'] # configured in uA
 
                     # Check if alert condition met
                     if current > threshold and not self.alert_active:
@@ -218,10 +218,10 @@ class GammavacMonitor:
                         self.alert_active = True
                         alert_msg = (
                             f"⚠️ ALERT: Current threshold exceeded!\n"
-                            f"Current: {current:.2f} mA\n"
-                            f"Threshold: {threshold:.2f} mA\n"
+                            f"Current: {current:.2f} uA\n"
+                            f"Threshold: {threshold:.2f} uA\n"
                             f"Voltage: {data['voltage']:.2f} V\n"
-                            f"Pressure: {data['pressure']:.2e} Torr"
+                            f"Pressure: {data['pressure']:.2e} mbar"
                         )
 
                         # Send to all subscribed users
@@ -239,8 +239,8 @@ class GammavacMonitor:
                         self.alert_active = False
                         recovery_msg = (
                             f"✅ Current back to normal\n"
-                            f"Current: {current:.2f} mA\n"
-                            f"Threshold: {threshold:.2f} mA"
+                            f"Current: {current:.2f} uA\n"
+                            f"Threshold: {threshold:.2f} uA"
                         )
 
                         for chat_id in self.subscribed_users:
@@ -282,7 +282,7 @@ class GammavacMonitor:
             "  Example: /readings 5\n\n"
             "/status - Get current controller status\n"
             "/help - Show this help message\n\n"
-            f"Alert threshold: {self.config['alerts']['current_threshold']} mA\n"
+            f"Alert threshold: {self.config['alerts']['current_threshold']} uA\n"
             f"Poll interval: {self.config['monitoring']['poll_interval']} seconds"
         )
         await update.message.reply_text(help_msg)
@@ -328,9 +328,9 @@ class GammavacMonitor:
         status_msg = (
             "📊 Current Status\n\n"
             f"Voltage: {data['voltage']:.2f} V\n"
-            f"Current: {data['current']:.2f} mA\n"
-            f"Pressure: {data['pressure']:.2e} Torr\n\n"
-            f"Alert threshold: {self.config['alerts']['current_threshold']} mA\n"
+            f"Current: {data['current']:.2f} uA\n"
+            f"Pressure: {data['pressure']:.2e} mbar\n\n"
+            f"Alert threshold: {self.config['alerts']['current_threshold']} uA\n"
             f"Alert status: {'🔴 ACTIVE' if self.alert_active else '🟢 Normal'}"
         )
 

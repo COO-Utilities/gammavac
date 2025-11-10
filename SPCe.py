@@ -260,7 +260,7 @@ class SpceController(HardwareDeviceBase):
             except (socket.timeout, serial.SerialTimeoutException if SERIAL_AVAILABLE else Exception):
                 self.logger.error("Timeout while waiting for response")
                 return "TIMEOUT"
-            retval = str(recv.decode('utf-8')).strip()
+            retval = str(recv.decode('utf-8'))
             if self.validate_response(retval):
                 response_type = response_type.upper()
                 if response_type == "F":
@@ -298,7 +298,7 @@ class SpceController(HardwareDeviceBase):
             command += f"{data} "
 
         chksm = sum(ord(c) for c in command) % 256
-
+        # chksm = 0
         command = f"~{command}{chksm:02X}\r"
         return command
 
@@ -314,11 +314,12 @@ class SpceController(HardwareDeviceBase):
         """
         # pylint: disable=too-many-branches
 
+        self.logger.debug("Validating response: %r", response)
         try:
             # The First field must be the bus address
             bus = int(response.split()[0])
-        except (ValueError, IndexError):
-            self.logger.error("Invalid response from device.")
+        except (ValueError, IndexError) as e:
+            self.logger.error("Invalid response from device. Response: %r, Error: %s", response, e)
             return False
 
         if bus != self.bus_address:
@@ -337,21 +338,26 @@ class SpceController(HardwareDeviceBase):
             return False
 
         # Calculate and verify checksum
+
         offset = len(response) - 3
+        # print(offset, len(response))
         try:
             rcksm = int(response[offset:], 16)  # Read hex checksum to decimal
+            # print(f"Hex checksum read: {rcksm}")
         except ValueError:
             self.logger.error("Unable to read checksum from device.")
             return False
 
+        print(response[:offset])
         # Calculate checksum (sum of all chars before checksum, mod 256)
-        cksm = sum(ord(c) for c in response[:offset+1]) % 256
-
-        if rcksm != cksm:
+        chksm = sum(ord(c) for c in response[:offset]) % 256
+        # print(f"Calculated checksum: {chksm}")
+        if rcksm != chksm:
             self.logger.error("Invalid checksum from device.")
             return False
-
-        return True
+        else:
+            self.logger.debug("Validated checksums to be correct.")
+            return True
 
     # --- Command Methods ---
     def get_atomic_value(self, item: str ="") -> Union[float, int, str, None]:

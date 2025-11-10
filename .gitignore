@@ -210,3 +210,11 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Monitoring data files
+gammavac_data.csv
+test_data.csv
+*.csv
+
+# Virtual serial port symlinks
+/tmp/vserial_*

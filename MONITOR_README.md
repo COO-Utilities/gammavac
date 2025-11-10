@@ -100,7 +100,7 @@ Example `config.yaml` for **TCP connection**:
 ```yaml
 controller:
   connection_type: "tcp"
-  host: "192.168.29.100"
+  host: "192.168.1.100"  # Replace with your terminal server IP
   port: 10015
   bus_address: 5
 

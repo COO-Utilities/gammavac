@@ -11,7 +11,7 @@ def main():
     port = "COM21"
     baudrate = 115200
     bus_address = 5
-    output_file = r"\\192.168.100.131\coldion\ULE_ionpump_log\data_log.csv"
+    output_file = "data_log.csv"  # Change to your desired path
     interval = 1.0  # seconds between readings
     num_readings = 100  # total number of readings to collect
 

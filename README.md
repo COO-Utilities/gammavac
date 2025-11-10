@@ -26,7 +26,7 @@ pip install .
 import SPCe
 
 controller = SPCe.SpceController(bus_address=5)
-controller.connect(host='192.168.29.100', port=10015)
+controller.connect(host='192.168.1.100', port=10015)  # Replace with your terminal server IP
 
 # Print pressure
 print(controller.read_pressure())

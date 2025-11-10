@@ -216,5 +216,8 @@ gammavac_data.csv
 test_data.csv
 *.csv
 
+# Configuration files with sensitive information
+config.yaml
+
 # Virtual serial port symlinks
 /tmp/vserial_*

@@ -11,7 +11,7 @@ controller:
   bytesize: 8                  # Data bits: 5, 6, 7, or 8
   stopbits: 1                  # Stop bits: 1, 1.5, or 2
   # TCP connection settings (unused if connection_type is "serial")
-  host: "192.168.29.100"       # Terminal server IP address
+  host: "192.168.1.100"        # Terminal server IP address (example)
   port: 10015                  # Terminal server port
   bus_address: 5               # SPCe bus address (1-255)
 

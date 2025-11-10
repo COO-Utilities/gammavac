@@ -1,23 +1,24 @@
 # Gamma Vacuum Monitor Configuration
+# Copy this file to config.yaml and fill in your actual values
 
 # SPCe Controller Connection Settings
 controller:
   connection_type: "serial"  # "serial" or "tcp"
   # Serial connection settings
-  serial_port: "COM21"  # Serial port (e.g., /dev/ttyUSB0 on Linux, COM3 on Windows)
+  serial_port: "COM3"  # Serial port (e.g., /dev/ttyUSB0 on Linux, COM3 on Windows)
   baudrate: 115200             # Baud rate for serial communication (default: 115200)
   parity: "N"                  # Parity: "N" (none), "E" (even), "O" (odd), "M" (mark), "S" (space)
   bytesize: 8                  # Data bits: 5, 6, 7, or 8
   stopbits: 1                  # Stop bits: 1, 1.5, or 2
   # TCP connection settings (unused if connection_type is "serial")
-  host: "192.168.29.100"       # Terminal server IP address
+  host: "192.168.1.100"        # Terminal server IP address
   port: 10015                  # Terminal server port
   bus_address: 5               # SPCe bus address (1-255)
 
 # Monitoring Settings
 monitoring:
   poll_interval: 30        # Seconds between readings
-  log_file: "//192.168.100.131/coldion/ULE_ionpump_log/data_log.csv"  # Full path to store readings
+  log_file: "gammavac_data.csv"  # Full path to store readings
 
 # Alert Settings
 alerts:

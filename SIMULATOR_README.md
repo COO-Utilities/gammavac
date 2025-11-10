@@ -95,6 +95,19 @@ The simulator responds to these SPCe command codes:
 - **Bus Address**: 5
 - **Pump Status**: RUNNING
 
+The pressure is calculated using the following current-to-pressure calculation:
+
+$$
+P = \dfrac{(0.066 * I * (\frac{5600}{V}) * U * F)}{S}
+$$
+where:
+
+- I -- current in ampere
+- V -- voltage in volts (SPCe is variable)
+- U -- Pressure units conversion factor (1 for Torr, 1.33 for mbar and 133 for Pascal).
+- F -- MPCe/LPCe programmed calibration factor (typically set to 1)
+- S - Configured pump size in l/s
+
 ## Testing Scenarios
 
 ### Normal Operation

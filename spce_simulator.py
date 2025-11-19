@@ -44,9 +44,9 @@ class SPCeSimulator:
         self.bus_address = 5
         self.model = "SPCe-1000"
         self.version = "2.10"
-        self.voltage = 4.5  # kV
-        self.current = 3.2  # mA
-        self.pressure = 1.5e-6  # Torr
+        self.voltage = 7000  # V
+        self.current = 15e-6  # A (device reports in Amperes, this is 15 microamperes)
+        self.pressure = 1.5e-6  # mbar
         self.pump_running = True
 
         # Serial connection
@@ -156,9 +156,9 @@ class SPCeSimulator:
         SPCE_COMMAND_GET_PUMP_SIZE = 0x11
 
         # Add some random variation to readings
-        self.voltage = 7000
-        current = random.uniform(10, 20)
-        self.pressure = current * 1e-7 * random.uniform(0.8, 1.2)
+        self.voltage = 7000  # V
+        current = random.uniform(10e-6, 20e-6)  # A (10-20 microamperes in Amperes)
+        self.pressure = current * 1e-1 * random.uniform(0.8, 1.2)  # mbar
         self.current = current
 
         # Handle specific commands
@@ -203,7 +203,7 @@ class SPCeSimulator:
             )
 
             logger.info(f"Simulator ready. Bus address: {self.bus_address}")
-            logger.info(f"Initial state: V={self.voltage:.2f}kV, I={self.current:.2f}mA, P={self.pressure:.2e}Torr")
+            logger.info(f"Initial state: V={self.voltage:.2f}V, I={self.current*1e6:.2f}uA, P={self.pressure:.2e}mbar")
             logger.info("Waiting for commands... (Press Ctrl+C to stop)")
 
             while True:

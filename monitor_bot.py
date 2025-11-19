@@ -209,7 +209,7 @@ class GammavacMonitor:
                 data = self.read_and_log()
 
                 if data:
-                    current = data['current']*1e6 # convert to uA
+                    current = data['current']  # already in uA from read_and_log()
                     threshold = self.config['alerts']['current_threshold'] # configured in uA
 
                     # Calculate current threshold level (0 = below threshold, 1 = 1x threshold, 2 = 2x threshold, etc.)

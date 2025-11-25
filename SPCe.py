@@ -5,7 +5,7 @@ import socket
 import re
 from typing import Union
 
-from hardware_device_base import HardwareDeviceBase
+from hardware_device_base import HardwareSensorBase
 
 # Constants (partial, extend as needed)
 SPCE_TIME_BETWEEN_COMMANDS = 0.12
@@ -45,7 +45,7 @@ SPCE_UNITS_MBAR = 'M'
 SPCE_UNITS_PASCAL = 'P'
 
 
-class SpceController(HardwareDeviceBase):
+class SpceController(HardwareSensorBase):
     """Class to control a Lesker GAMMA gauge SPCe controller over a TCP socket."""
     # pylint: disable=too-many-public-methods
 
@@ -72,54 +72,56 @@ class SpceController(HardwareDeviceBase):
         # Simulate mode
         if simulate:
             self.simulate = True
-            self.logger.info("Simulate mode enabled.")
+            self.report_info("Simulate mode enabled.")
         else:
             self.simulate = False
 
-    def connect(self, *args, con_type="tcp") -> None:
+    def connect(self, host, port, con_type="tcp") -> None:  # pylint: disable=W0221
         """Connect to the controller.
 
-        :param args: for tcp connection, host and port, for serial, port and baudrate
-        :param con_type: tcp or serial
+        :param host: String, for tcp connection, host or IP address.
+        :param port: Integer, for tcp connection, port.
+        :param con_type: String, tcp or serial (serial not currently supported).
         """
-        if self.validate_connection_params(args):
+        if self.validate_connection_params((host, port)):
             if self.simulate:
                 self.connected = True
-                self.logger.info('Connected to SPCe simulator.')
+                self.report_info('Connected to SPCe simulator.')
             else:
                 if con_type == "tcp":
-                    host = args[0]
-                    port = args[1]
                     if self.sock is None:
                         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     try:
                         self.sock.connect((host, port))
                         self._set_connected(True)
-                        self.logger.info("Connected to SPCe controller at %s:%d bus %d",
-                                         host, port, self.bus_address)
+                        self.report_info(f"Connected to SPCe controller at {host}:{port} "
+                                         f"bus {self.bus_address}")
                     except OSError as e:
                         if e.errno == errno.EISCONN:
-                            self.logger.debug("Already connected")
+                            self.report_info("Already connected")
                             self._set_connected(True)
                         else:
-                            self.logger.error("Connection error: %s", e.strerror)
+                            self.report_error(f"Connection error: {e.strerror}")
                             self._set_connected(False)
                     if self.connected:
                         self._clear_socket()
                 elif con_type == "serial":
-                    self.logger.error("Serial connection not implemented.")
+                    self.report_error("Serial connection not implemented.")
                     self._set_connected(False)
                 else:
-                    self.logger.error("Unknown con_type: %s", con_type)
+                    self.report_error(f"Unknown con_type: {con_type}")
                     self._set_connected(False)
         else:
-            self.logger.error("Invalid connection args: %s", args)
+            self.report_error(f"Invalid connection args: {host}:{port}")
             self._set_connected(False)
 
     def disconnect(self) -> None:
         """Disconnect from the controller."""
+        if not self.is_connected:
+            self.report_error("Already disconnected.")
+            return
         if self.simulate:
-            self.logger.info('Disconnected from SPCe simulator.')
+            self.report_info('Disconnected from SPCe simulator.')
             self.connected = False
         else:
             try:
@@ -127,9 +129,9 @@ class SpceController(HardwareDeviceBase):
                 self.sock.close()
                 self._set_connected(False)
                 self.sock = None
-                self.logger.info("Disconnected from SPCe controller")
+                self.report_info("Disconnected from SPCe controller")
             except OSError as e:
-                self.logger.error("Disconnection error: %s", e.strerror)
+                self.report_error(f"Disconnection error: {e.strerror}")
                 self._set_connected(False)
                 self.sock = None
 
@@ -145,13 +147,13 @@ class SpceController(HardwareDeviceBase):
             self.sock.setblocking(True)
             self.sock.settimeout(2.0)
 
-    def _send_command(self, command: str, *args) -> bool:
+    def _send_command(self, command: str) -> bool:  # pylint: disable=W0221
         """Send a command without expecting a response.
         Args:
             command (str): command to send.
         """
         if not self.is_connected:
-            self.logger.error("Not connected to SPCe controller.")
+            self.report_error("Not connected to SPCe controller.")
             return False
 
         self.logger.debug("Sending command %s", command)
@@ -166,7 +168,7 @@ class SpceController(HardwareDeviceBase):
     def _read_reply(self) -> Union[str, None]:
         """Read a reply from the controller."""
         if not self.is_connected:
-            self.logger.error("Not connected to SPCe controller.")
+            self.report_error("Not connected to SPCe controller.")
             return None
         try:
             reply = self.sock.recv(1024).decode('utf-8').strip()
@@ -183,7 +185,7 @@ class SpceController(HardwareDeviceBase):
                 'I' for int, 'S' for str (default), 'F' for float.
             """
         if not self.connected:
-            self.logger.error("Not connected to SPCe controller.")
+            self.report_error("Not connected to SPCe controller.")
             return "NOT CONNECTED"
 
         self.logger.debug("Sending request %s", command)
@@ -198,7 +200,7 @@ class SpceController(HardwareDeviceBase):
                 recv_len = len(recv)
                 self.logger.debug("Return: len = %d, Value = %s", recv_len, recv)
             except socket.timeout:
-                self.logger.error("Timeout while waiting for response")
+                self.report_error("Timeout while waiting for response")
                 return "TIMEOUT"
             retval = str(recv.decode('utf-8')).strip()
             if self.validate_response(retval):
@@ -258,11 +260,11 @@ class SpceController(HardwareDeviceBase):
             # The First field must be the bus address
             bus = int(response.split()[0])
         except (ValueError, IndexError):
-            self.logger.error("Invalid response from device.")
+            self.report_error("Invalid response from device.")
             return False
 
         if bus != self.bus_address:
-            self.logger.error("Invalid bus address from device.")
+            self.report_error("Invalid bus address from device.")
             return False
 
         # Now check for error condition or valid response
@@ -271,7 +273,7 @@ class SpceController(HardwareDeviceBase):
         if substr.startswith("ER"):
             try:
                 error_code_str = substr[3:]
-                self.logger.error(error_code_str)
+                self.report_error(error_code_str)
             except ValueError:
                 pass
             return False
@@ -281,14 +283,14 @@ class SpceController(HardwareDeviceBase):
         try:
             rcksm = int(response[offset:], 16)  # Read hex checksum to decimal
         except ValueError:
-            self.logger.error("Unable to read checksum from device.")
+            self.report_error("Unable to read checksum from device.")
             return False
 
         # Calculate checksum (sum of all chars before checksum, mod 256)
         cksm = sum(ord(c) for c in response[:offset+1]) % 256
 
         if rcksm != cksm:
-            self.logger.error("Invalid checksum from device.")
+            self.report_error("Invalid checksum from device.")
             return False
 
         return True
@@ -303,7 +305,7 @@ class SpceController(HardwareDeviceBase):
         elif item == "voltage":
             value = self.read_voltage()
         else:
-            self.logger.error("Invalid item from device.")
+            self.report_error(f"Invalid item from device: {item}")
             value = None
         return value
 
@@ -379,7 +381,7 @@ class SpceController(HardwareDeviceBase):
         return self._send_request(
             self.create_command(SPCE_COMMAND_GET_CAL_FACTOR), "F")
 
-    def set_cal_factor(self, factor):
+    def set_cal_factor(self, factor: float):
         """Set the calibration factor.
 
         Args:

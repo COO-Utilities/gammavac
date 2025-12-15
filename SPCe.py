@@ -156,7 +156,7 @@ class SpceController(HardwareSensorBase):
             self.report_error("Not connected to SPCe controller.")
             return False
 
-        self.logger.debug("Sending command %s", command)
+        self.report_debug(f"Sending command {command}")
         if self.simulate:
             print(f"[SIM SEND] {command}")
             return True
@@ -172,7 +172,7 @@ class SpceController(HardwareSensorBase):
             return None
         try:
             reply = self.sock.recv(1024).decode('utf-8').strip()
-            self.logger.debug("Received reply %s", reply)
+            self.report_debug(f"Received reply {reply}")
             return reply
         except Exception as ex:
             raise IOError(f"Failed to _read_reply message: {ex}") from ex
@@ -188,7 +188,7 @@ class SpceController(HardwareSensorBase):
             self.report_error("Not connected to SPCe controller.")
             return "NOT CONNECTED"
 
-        self.logger.debug("Sending request %s", command)
+        self.report_debug(f"Sending request {command}")
         if self.simulate:
             print(f"[SIM REQ] {command}")
             return "SIM_RESPONSE"
@@ -198,7 +198,7 @@ class SpceController(HardwareSensorBase):
             try:
                 recv = self.sock.recv(1024)
                 recv_len = len(recv)
-                self.logger.debug("Return: len = %d, Value = %s", recv_len, recv)
+                self.report_debug(f"Return: len = {recv_len}, Value = {recv}")
             except socket.timeout:
                 self.report_error("Timeout while waiting for response")
                 return "TIMEOUT"

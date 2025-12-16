@@ -56,7 +56,7 @@ pytest
 
 ## Class Diagram
 
-Below is a class diagram of the added methods and attributes for the lakeshore.
+Below is a class diagram of the added methods and attributes for the Gamma Vac-Ion.
 See the README for the hardware_device_base module for the inherited methods and
 attributes.
 

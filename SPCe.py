@@ -85,7 +85,7 @@ class SpceController(HardwareSensorBase):
         """
         if self.validate_connection_params((host, port)):
             if self.simulate:
-                self.connected = True
+                self._set_connected(True)
                 self.report_info('Connected to SPCe simulator.')
             else:
                 if con_type == "tcp":
@@ -103,7 +103,7 @@ class SpceController(HardwareSensorBase):
                         else:
                             self.report_error(f"Connection error: {e.strerror}")
                             self._set_connected(False)
-                    if self.connected:
+                    if self.is_connected():
                         self._clear_socket()
                 elif con_type == "serial":
                     self.report_error("Serial connection not implemented.")
@@ -117,12 +117,12 @@ class SpceController(HardwareSensorBase):
 
     def disconnect(self) -> None:
         """Disconnect from the controller."""
-        if not self.is_connected:
+        if not self.is_connected():
             self.report_error("Already disconnected.")
             return
         if self.simulate:
             self.report_info('Disconnected from SPCe simulator.')
-            self.connected = False
+            self._set_connected(False)
         else:
             try:
                 self.sock.shutdown(socket.SHUT_RDWR)
@@ -152,7 +152,7 @@ class SpceController(HardwareSensorBase):
         Args:
             command (str): command to send.
         """
-        if not self.is_connected:
+        if not self.is_connected():
             self.report_error("Not connected to SPCe controller.")
             return False
 
@@ -167,7 +167,7 @@ class SpceController(HardwareSensorBase):
 
     def _read_reply(self) -> Union[str, None]:
         """Read a reply from the controller."""
-        if not self.is_connected:
+        if not self.is_connected():
             self.report_error("Not connected to SPCe controller.")
             return None
         try:
@@ -184,7 +184,7 @@ class SpceController(HardwareSensorBase):
             response_type (str): Type of response:
                 'I' for int, 'S' for str (default), 'F' for float.
             """
-        if not self.connected:
+        if not self.is_connected():
             self.report_error("Not connected to SPCe controller.")
             return "NOT CONNECTED"
 
@@ -214,7 +214,7 @@ class SpceController(HardwareSensorBase):
                 return retval
             return "NOT VALID"
 
-    def create_command(self, code, data=None):
+    def create_command(self, code, data=None) -> str:
         """Create a properly formatted command string.
 
         Args:
@@ -244,7 +244,7 @@ class SpceController(HardwareSensorBase):
         command = f"~{command}{chksm:02X}\r"
         return command
 
-    def validate_response(self, response: str) -> int:
+    def validate_response(self, response: str) -> bool:
         """
         Validate the response string from a serial device.
 

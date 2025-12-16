@@ -53,3 +53,49 @@ To run all tests from the project root:
 ```bash
 pytest
 ```
+
+## Class Diagram
+
+Below is a class diagram of the added methods and attributes for the lakeshore.
+See the README for the hardware_device_base module for the inherited methods and
+attributes.
+
+```mermaid
+classDiagram
+    class SpceController {
+        +Int bus_address
+        +socket sock
+        +Bool simulate
+        _clear_socket()
+        _send_request() Union[int, float, str]
+        create_command() str
+        validate_response() bool
+        read_model() str
+        read_version() str
+        reset()
+        set_arc_detect()
+        get_arc_detect() str
+        read_current() float
+        read_pressure() float
+        read_voltage() float
+        set_units()
+        get_pump_status() str
+        get_pump_size() int
+        set_pump_size()
+        get_cal_factor() float
+        set_cal_factor()
+        set_auto_restart()
+        get_auto_restart() str
+        start_pump()
+        stop_pump()
+        lock_keypad()
+        get_analog_mode() int
+        set_analog_mode()
+        high_voltage_on() str
+        set_hv_autorecovery()
+        get_hv_autorecovery() int
+        set_comm_mode()
+        get_comm_mode() int
+        set_comm_interface()
+    }
+```
